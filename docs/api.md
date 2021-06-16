@@ -55,8 +55,8 @@ POST /todo
 
 ```json
 {
-    "title": "Buy a new pencil",    // string: required
-    "done": false                   // boolean
+    "title": "Buy a new pencil",
+    "done": false
 }
 ```
 
@@ -136,8 +136,8 @@ PATCH /todo/{id}
 
 ```json
 {
-    "title": "Buy a new pencil",    // string: If not specified, the original value is retained.
-    "done": true                    // boolean: If not specified, the original value is retained.
+    "title": "Buy a new pencil",
+    "done": true
 }
 ```
 
