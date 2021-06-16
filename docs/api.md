@@ -8,6 +8,39 @@
 |Delete ToDo|DELETE|/todo/{id}|
 |List ToDo|GET|/todo|
 
+- [API design](#api-design)
+  - [Create ToDo](#create-todo)
+    - [HTTP request](#http-request)
+    - [Body parameters](#body-parameters)
+    - [Response](#response)
+      - [code](#code)
+      - [body](#body)
+  - [Read ToDo](#read-todo)
+    - [HTTP request](#http-request-1)
+    - [Path parameters](#path-parameters)
+    - [Response](#response-1)
+      - [code](#code-1)
+      - [body](#body-1)
+  - [Update Todo](#update-todo)
+    - [HTTP request](#http-request-2)
+    - [Path parameters](#path-parameters-1)
+    - [Body parameters](#body-parameters-1)
+    - [Response](#response-2)
+      - [code](#code-2)
+      - [body](#body-2)
+  - [Delete Todo](#delete-todo)
+    - [HTTP request](#http-request-3)
+    - [Path parameters](#path-parameters-2)
+    - [Response](#response-3)
+      - [code](#code-3)
+      - [body](#body-3)
+  - [List Todo](#list-todo)
+    - [HTTP request](#http-request-4)
+    - [Query parameters](#query-parameters)
+    - [Response](#response-4)
+      - [code](#code-4)
+      - [body](#body-4)
+
 ## Create ToDo
 
 Create ToDo.  
@@ -208,5 +241,3 @@ GET /todo?done={done}
     }
 ]
 ```
-
-
