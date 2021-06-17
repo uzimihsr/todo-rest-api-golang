@@ -80,8 +80,8 @@ POST /todo
     "id": 123,
     "title": "Buy a new pencil",
     "done": false,
-    "created_at": "2021-06-15T00:35:07Z",
-    "updated_at": "2021-06-15T00:35:07Z"
+    "createdAt": "2021-06-15T00:35:07Z",
+    "updatedAt": "2021-06-15T00:35:07Z"
 }
 ```
 
@@ -116,8 +116,8 @@ GET /todo/{id}
     "id": 123,
     "title": "Buy a new pencil",
     "done": false,
-    "created_at": "2021-06-15T00:35:07Z",
-    "updated_at": "2021-06-15T00:35:07Z"
+    "createdAt": "2021-06-15T00:35:07Z",
+    "updatedAt": "2021-06-15T00:35:07Z"
 }
 ```
 
@@ -168,8 +168,8 @@ PATCH /todo/{id}
     "id": 123,
     "title": "Buy a new pencil",
     "done": true,
-    "created_at": "2021-06-15T00:35:07Z",
-    "updated_at": "2021-06-15T00:40:10Z"
+    "createdAt": "2021-06-15T00:35:07Z",
+    "updatedAt": "2021-06-15T00:40:10Z"
 }
 ```
 
@@ -204,8 +204,8 @@ DELETE /todo/{id}
     "id": 123,
     "title": "Buy a new pencil",
     "done": true,
-    "created_at": "2021-06-15T00:35:07Z",
-    "updated_at": "2021-06-15T00:40:10Z"
+    "createdAt": "2021-06-15T00:35:07Z",
+    "updatedAt": "2021-06-15T00:40:10Z"
 }
 ```
 
@@ -241,15 +241,15 @@ GET /todo?done={done}
         "id": 123,
         "title": "Buy a new pencil",
         "done": true,
-        "created_at": "2021-06-15T00:35:07Z",
-        "updated_at": "2021-06-15T00:40:10Z"
+        "createdAt": "2021-06-15T00:35:07Z",
+        "updatedAt": "2021-06-15T00:40:10Z"
     },
     {
         "id": 456,
         "title": "Go to the cinema to see a movie",
         "done": false,
-        "created_at": "2021-06-15T00:35:07Z",
-        "updated_at": "2021-06-15T00:40:10Z"
+        "createdAt": "2021-06-15T00:35:07Z",
+        "updatedAt": "2021-06-15T00:40:10Z"
     }
 ]
 ```
