@@ -60,6 +60,11 @@ POST /todo
 }
 ```
 
+|key|description|
+|---|---|
+|title|`string`<br>`required`<br>title of the ToDo.|
+|done|`boolean`<br>`default:false`<br>status of the ToDo.<br>true: done<br>false: undone|
+
 ### Response
 
 #### code
@@ -140,6 +145,13 @@ PATCH /todo/{id}
     "done": true
 }
 ```
+
+|key|description|
+|---|---|
+|title|`string`<br>title of the ToDo.[*1]|
+|done|`boolean`<br>status of the ToDo.[*1]<br>true: done<br>false: undone|
+
+[*1]: If not specified, the original value is retained.
 
 ### Response
 
