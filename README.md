@@ -14,5 +14,15 @@ WIP
 
 ```console
 .
-└── docs    Design documents
+├── docs
+├── domain
+│   ├── model
+│   └── repository
+├── infrastructure
+│   └── database
+├── presentation
+│   ├── handler
+│   └── router
+└── usecase
+    └── service
 ```
