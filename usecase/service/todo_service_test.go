@@ -340,7 +340,15 @@ func TestList(t *testing.T) {
 	}{
 		{
 			name:       "01_Listが成功するケース",
-			listOption: ListOption{},
+			listOption: ListOption{Done: "true"},
+			listError:  nil,
+			listResult: toDoList,
+			listTimes:  1,
+			wantError:  false,
+		},
+		{
+			name:       "02_Listが成功するケース",
+			listOption: ListOption{Done: ""},
 			listError:  nil,
 			listResult: toDoList,
 			listTimes:  1,
@@ -348,7 +356,7 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:       "02_Listが失敗するケース",
-			listOption: ListOption{},
+			listOption: ListOption{Done: "true"},
 			listError:  errors.New("List ERROR"),
 			listResult: nil,
 			listTimes:  1,
@@ -363,8 +371,11 @@ func TestList(t *testing.T) {
 			t.Log(tt.name)
 
 			// Arrange
-			selector := &model.ToDoSelector{
-				Done: tt.listOption.Done,
+			selector := &model.ToDoSelector{}
+			if tt.listOption.Done != "" {
+				selector.Done = tt.listOption.Done
+			} else {
+				selector = nil
 			}
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)

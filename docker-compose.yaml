@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:5.7.33
+    container_name: mysql
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /password-root
+    volumes:
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+      - ./mysql/password-root:/password-root
+      - ./mysql/todo_db.sql:/docker-entrypoint-initdb.d/todo_db.sql
+    ports:
+      - 3306:3306
+  todo-api:
+    build: ./
+    container_name: todo-api
+    command: --config=/config/config.yaml
+    volumes:
+      - ./config/config.yaml:/config/config.yaml
+    ports:
+      - 8080:8080
+    depends_on:
+      - "mysql"
