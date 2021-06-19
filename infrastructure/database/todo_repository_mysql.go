@@ -103,6 +103,8 @@ func (todoDB *toDoRepositoryMySQL) List(selector *model.ToDoSelector) ([]model.T
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		return nil, errors.New("invalid selector")
 	}
 
 	for rows.Next() {
