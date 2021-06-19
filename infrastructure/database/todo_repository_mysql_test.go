@@ -151,6 +151,18 @@ func TestUpdate(t *testing.T) {
 			execResult: sqlmock.NewErrorResult(errors.New("ERROR RESULT")),
 			wantError:  true,
 		},
+		{
+			name:       "03_RowsAffected()が失敗するケース",
+			execError:  nil,
+			execResult: sqlmock.NewErrorResult(errors.New("ERROR RESULT")),
+			wantError:  true,
+		},
+		{
+			name:       "04_RowsAffected()で1以外が返るケース",
+			execError:  nil,
+			execResult: sqlmock.NewResult(0, 0),
+			wantError:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -208,6 +220,18 @@ func TestDelete(t *testing.T) {
 			execResult: sqlmock.NewErrorResult(errors.New("ERROR RESULT")),
 			wantError:  true,
 		},
+		{
+			name:       "03_RowsAffected()が失敗するケース",
+			execError:  nil,
+			execResult: sqlmock.NewErrorResult(errors.New("ERROR RESULT")),
+			wantError:  true,
+		},
+		{
+			name:       "04_RowsAffected()が1以外を返すケース",
+			execError:  nil,
+			execResult: sqlmock.NewResult(0, 100),
+			wantError:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -240,33 +264,29 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestListWithoutSelector(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
 		name       string
-		selector   *model.ToDoSelector
 		queryRow   *sqlmock.Rows
 		queryError error
 		wantError  bool
 	}{
 		{
 			name:       "01_SELECTが成功するケース",
-			selector:   nil,
 			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
 			queryError: nil,
 			wantError:  false,
 		},
 		{
 			name:       "02_SELECTが失敗するケース",
-			selector:   nil,
 			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}),
 			queryError: errors.New("SELECT FAILED"),
 			wantError:  true,
 		},
 		{
 			name:       "03_Scanが失敗するケース",
-			selector:   nil,
 			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(nil, nil, nil, nil, nil),
 			queryError: nil,
 			wantError:  true,
@@ -286,6 +306,88 @@ func TestList(t *testing.T) {
 			}
 			defer db.Close()
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT id, title, done, created_at, updated_at FROM todo")).
+				WillReturnRows(tt.queryRow).
+				WillReturnError(tt.queryError)
+			toDoRepository := NewToDoRepositoryMySQL(db)
+
+			// Act
+			_, err = toDoRepository.List(nil)
+
+			// Assert
+			if (err != nil) != tt.wantError {
+				t.Error(err.Error())
+			}
+		})
+	}
+}
+
+func TestListWithSelector(t *testing.T) {
+	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
+
+	tests := []struct {
+		name        string
+		selector    *model.ToDoSelector
+		expectedArg bool
+		queryRow    *sqlmock.Rows
+		queryError  error
+		wantError   bool
+	}{
+		{
+			name:        "01_SELECTが成功するケース_done=true",
+			selector:    &model.ToDoSelector{Done: "true"},
+			expectedArg: true,
+			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
+			queryError:  nil,
+			wantError:   false,
+		},
+		{
+			name:        "02_SELECTが成功するケース_done=false",
+			selector:    &model.ToDoSelector{Done: "false"},
+			expectedArg: false,
+			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
+			queryError:  nil,
+			wantError:   false,
+		},
+		{
+			name:        "03_SELECTが失敗するケース",
+			selector:    &model.ToDoSelector{Done: "true"},
+			expectedArg: true,
+			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
+			queryError:  errors.New("SELECT FAILED"),
+			wantError:   true,
+		},
+		{
+			name:        "04_SELECTが実行されないケース",
+			selector:    &model.ToDoSelector{Done: ""},
+			expectedArg: false,
+			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}),
+			queryError:  nil,
+			wantError:   true,
+		},
+		{
+			name:        "05_Scanが失敗するケース",
+			selector:    &model.ToDoSelector{Done: "true"},
+			expectedArg: true,
+			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(nil, nil, nil, nil, nil),
+			queryError:  nil,
+			wantError:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tt.name)
+
+			// Arrange
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Error(err.Error())
+			}
+			defer db.Close()
+			mock.ExpectQuery(regexp.QuoteMeta("SELECT id, title, done, created_at, updated_at FROM todo WHERE done = ?")).
+				WithArgs(tt.expectedArg).
 				WillReturnRows(tt.queryRow).
 				WillReturnError(tt.queryError)
 			toDoRepository := NewToDoRepositoryMySQL(db)

@@ -12,4 +12,5 @@ type ToDoObject struct {
 }
 
 type ListOption struct {
+	Done string
 }
