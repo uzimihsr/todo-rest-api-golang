@@ -1,3 +1,4 @@
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOPACKAGE/mock_$GOFILE -package=mock_$GOPACKAGE
 package service
 
 import (
@@ -53,15 +54,20 @@ func (s *toDoService) Read(toDo *ToDoObject) (*ToDoObject, error) {
 
 func (s *toDoService) Update(toDo *ToDoObject) (*ToDoObject, error) {
 
-	_, err := s.repository.Read(toDo.Id)
+	before, err := s.repository.Read(toDo.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// 対象のToDoを更新
 	updateToDo := &model.ToDo{
+		Id:    toDo.Id,
 		Title: toDo.Title,
 		Done:  toDo.Done,
+	}
+
+	if updateToDo.Title == "" {
+		updateToDo.Title = before.Title
 	}
 	err = s.repository.Update(updateToDo)
 	if err != nil {
@@ -95,8 +101,11 @@ func (s *toDoService) Delete(toDo *ToDoObject) (*ToDoObject, error) {
 
 func (s *toDoService) List(option *ListOption) ([]ToDoObject, error) {
 
-	selector := &model.ToDoSelector{
-		Done: option.Done,
+	selector := &model.ToDoSelector{}
+	if option.Done != "" {
+		selector.Done = option.Done
+	} else {
+		selector = nil
 	}
 
 	result, err := s.repository.List(selector)
