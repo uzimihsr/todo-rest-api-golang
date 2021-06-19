@@ -1,6 +1,9 @@
 package service
 
-import "github.com/uzimihsr/todo-rest-api-golang/domain/repository"
+import (
+	"github.com/uzimihsr/todo-rest-api-golang/domain/model"
+	"github.com/uzimihsr/todo-rest-api-golang/domain/repository"
+)
 
 type ToDoService interface {
 	Create(*ToDoObject) (*ToDoObject, error)
@@ -14,31 +17,107 @@ type toDoService struct {
 	repository repository.ToDoRepository
 }
 
-func NewToDoService() ToDoService {
-	return new(toDoService)
+func NewToDoService(repository repository.ToDoRepository) ToDoService {
+	return &toDoService{repository: repository}
 }
 
 func (s *toDoService) Create(toDo *ToDoObject) (*ToDoObject, error) {
-	// WIP
-	return nil, nil
+
+	createToDo := &model.ToDo{
+		Title: toDo.Title,
+		Done:  toDo.Done,
+	}
+	id, err := s.repository.Create(createToDo)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := s.repository.Read(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return modelToObject(result), nil
 }
 
 func (s *toDoService) Read(toDo *ToDoObject) (*ToDoObject, error) {
-	// WIP
-	return nil, nil
+
+	id := toDo.Id
+	result, err := s.repository.Read(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return modelToObject(result), nil
 }
 
 func (s *toDoService) Update(toDo *ToDoObject) (*ToDoObject, error) {
-	// WIP
-	return nil, nil
+
+	_, err := s.repository.Read(toDo.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 対象のToDoを更新
+	updateToDo := &model.ToDo{
+		Title: toDo.Title,
+		Done:  toDo.Done,
+	}
+	err = s.repository.Update(updateToDo)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新されたToDoを取得
+	result, err := s.repository.Read(toDo.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return modelToObject(result), nil
 }
 
 func (s *toDoService) Delete(toDo *ToDoObject) (*ToDoObject, error) {
-	// WIP
-	return nil, nil
+
+	before, err := s.repository.Read(toDo.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 対象のToDoを削除
+	err = s.repository.Delete(toDo.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return modelToObject(before), nil
 }
 
 func (s *toDoService) List(option *ListOption) ([]ToDoObject, error) {
-	// WIP
-	return nil, nil
+
+	selector := &model.ToDoSelector{
+		Done: option.Done,
+	}
+
+	result, err := s.repository.List(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	toDoList := []ToDoObject{}
+	for _, t := range result {
+		toDoList = append(toDoList, *modelToObject(&t))
+	}
+
+	return toDoList, nil
+}
+
+func modelToObject(model *model.ToDo) *ToDoObject {
+	return &ToDoObject{
+		Id:        model.Id,
+		Title:     model.Title,
+		Done:      model.Done,
+		CreatedAt: model.CreatedAt,
+		UpdatedAt: model.UpdatedAt,
+	}
 }
