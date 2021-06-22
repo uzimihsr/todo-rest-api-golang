@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -68,12 +69,12 @@ func TestCreate(t *testing.T) {
 			// Arrange
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)
-			mockToDoRepository.EXPECT().Create(gomock.Any()).Return(tt.createId, tt.createError).Times(tt.createTimes)
-			mockToDoRepository.EXPECT().Read(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
-			toDoUsecase := NewToDoService(mockToDoRepository)
+			mockToDoRepository.EXPECT().Insert(gomock.Any()).Return(tt.createId, tt.createError).Times(tt.createTimes)
+			mockToDoRepository.EXPECT().SelectById(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
+			toDoService := NewToDoService(mockToDoRepository)
 
 			// Act
-			result, err := toDoUsecase.Create(toDoObject)
+			result, err := toDoService.Create(toDoObject)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -124,11 +125,11 @@ func TestRead(t *testing.T) {
 			// Arrange
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)
-			mockToDoRepository.EXPECT().Read(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
-			toDoUsecase := NewToDoService(mockToDoRepository)
+			mockToDoRepository.EXPECT().SelectById(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
+			toDoService := NewToDoService(mockToDoRepository)
 
 			// Act
-			result, err := toDoUsecase.Read(toDoObject)
+			result, err := toDoService.Read(toDoObject)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -222,14 +223,14 @@ func TestUpdate(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)
 			gomock.InOrder(
-				mockToDoRepository.EXPECT().Read(gomock.Any()).Return(tt.readResult1, tt.readError1).Times(tt.readTimes1),
-				mockToDoRepository.EXPECT().Read(gomock.Any()).Return(tt.readResult2, tt.readError2).Times(tt.readTimes2),
+				mockToDoRepository.EXPECT().SelectById(gomock.Any()).Return(tt.readResult1, tt.readError1).Times(tt.readTimes1),
+				mockToDoRepository.EXPECT().SelectById(gomock.Any()).Return(tt.readResult2, tt.readError2).Times(tt.readTimes2),
 			)
 			mockToDoRepository.EXPECT().Update(gomock.Any()).Return(tt.updateError).Times(tt.updateTimes)
-			toDoUsecase := NewToDoService(mockToDoRepository)
+			toDoService := NewToDoService(mockToDoRepository)
 
 			// Act
-			result, err := toDoUsecase.Update(toDoObject)
+			result, err := toDoService.Update(toDoObject)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -296,12 +297,12 @@ func TestDelete(t *testing.T) {
 			// Arrange
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)
-			mockToDoRepository.EXPECT().Read(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
-			mockToDoRepository.EXPECT().Delete(gomock.Any()).Return(tt.deleteError).Times(tt.deleteTimes)
-			toDoUsecase := NewToDoService(mockToDoRepository)
+			mockToDoRepository.EXPECT().SelectById(gomock.Any()).Return(tt.readResult, tt.readError).Times(tt.readTimes)
+			mockToDoRepository.EXPECT().DeleteById(gomock.Any()).Return(tt.deleteError).Times(tt.deleteTimes)
+			toDoService := NewToDoService(mockToDoRepository)
 
 			// Act
-			result, err := toDoUsecase.Delete(toDoObject)
+			result, err := toDoService.Delete(toDoObject)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -331,36 +332,49 @@ func TestList(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		listOption ListOption
-		listError  error
-		listResult []model.ToDo
-		listTimes  int
-		wantError  bool
+		name                    string
+		listOption              ListOption
+		listError               error
+		listResult              []model.ToDo
+		listAllTimes            int
+		listFilteredByDoneTimes int
+		wantError               bool
 	}{
 		{
-			name:       "01_Listが成功するケース",
-			listOption: ListOption{Done: "true"},
-			listError:  nil,
-			listResult: toDoList,
-			listTimes:  1,
-			wantError:  false,
+			name:                    "01_Listが成功するケース_Doneが指定されている場合",
+			listOption:              ListOption{Done: "true"},
+			listError:               nil,
+			listResult:              toDoList,
+			listAllTimes:            0,
+			listFilteredByDoneTimes: 1,
+			wantError:               false,
 		},
 		{
-			name:       "02_Listが成功するケース",
-			listOption: ListOption{Done: ""},
-			listError:  nil,
-			listResult: toDoList,
-			listTimes:  1,
-			wantError:  false,
+			name:                    "02_Listが成功するケース_doneが指定されていない場合",
+			listOption:              ListOption{Done: ""},
+			listError:               nil,
+			listResult:              toDoList,
+			listAllTimes:            1,
+			listFilteredByDoneTimes: 0,
+			wantError:               false,
 		},
 		{
-			name:       "02_Listが失敗するケース",
-			listOption: ListOption{Done: "true"},
-			listError:  errors.New("List ERROR"),
-			listResult: nil,
-			listTimes:  1,
-			wantError:  true,
+			name:                    "03_Listが失敗するケース_doneが指定されている場合",
+			listOption:              ListOption{Done: "false"},
+			listError:               errors.New("List ERROR"),
+			listResult:              nil,
+			listAllTimes:            0,
+			listFilteredByDoneTimes: 1,
+			wantError:               true,
+		},
+		{
+			name:                    "04_Listが失敗するケース_doneが指定されていない場合",
+			listOption:              ListOption{Done: ""},
+			listError:               errors.New("List ERROR"),
+			listResult:              nil,
+			listAllTimes:            1,
+			listFilteredByDoneTimes: 0,
+			wantError:               true,
 		},
 	}
 
@@ -371,19 +385,18 @@ func TestList(t *testing.T) {
 			t.Log(tt.name)
 
 			// Arrange
-			selector := &model.ToDoSelector{}
+			var done bool
 			if tt.listOption.Done != "" {
-				selector.Done = tt.listOption.Done
-			} else {
-				selector = nil
+				done, _ = strconv.ParseBool(tt.listOption.Done)
 			}
 			ctrl := gomock.NewController(t)
 			mockToDoRepository := mock_repository.NewMockToDoRepository(ctrl)
-			mockToDoRepository.EXPECT().List(selector).Return(tt.listResult, tt.listError).Times(tt.listTimes)
-			toDoUsecase := NewToDoService(mockToDoRepository)
+			mockToDoRepository.EXPECT().ListAll().Return(tt.listResult, tt.listError).Times(tt.listAllTimes)
+			mockToDoRepository.EXPECT().ListFilteredByDone(done).Return(tt.listResult, tt.listError).Times(tt.listFilteredByDoneTimes)
+			toDoService := NewToDoService(mockToDoRepository)
 
 			// Act
-			result, err := toDoUsecase.List(&tt.listOption)
+			result, err := toDoService.List(&tt.listOption)
 
 			// Assert
 			if (err != nil) != tt.wantError {

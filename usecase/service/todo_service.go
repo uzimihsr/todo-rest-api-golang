@@ -2,6 +2,8 @@
 package service
 
 import (
+	"strconv"
+
 	"github.com/uzimihsr/todo-rest-api-golang/domain/model"
 	"github.com/uzimihsr/todo-rest-api-golang/domain/repository"
 )
@@ -28,12 +30,12 @@ func (s *toDoService) Create(toDo *ToDoObject) (*ToDoObject, error) {
 		Title: toDo.Title,
 		Done:  toDo.Done,
 	}
-	id, err := s.repository.Create(createToDo)
+	id, err := s.repository.Insert(createToDo)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := s.repository.Read(id)
+	result, err := s.repository.SelectById(id)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,7 @@ func (s *toDoService) Create(toDo *ToDoObject) (*ToDoObject, error) {
 func (s *toDoService) Read(toDo *ToDoObject) (*ToDoObject, error) {
 
 	id := toDo.Id
-	result, err := s.repository.Read(id)
+	result, err := s.repository.SelectById(id)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +56,7 @@ func (s *toDoService) Read(toDo *ToDoObject) (*ToDoObject, error) {
 
 func (s *toDoService) Update(toDo *ToDoObject) (*ToDoObject, error) {
 
-	before, err := s.repository.Read(toDo.Id)
+	before, err := s.repository.SelectById(toDo.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +77,7 @@ func (s *toDoService) Update(toDo *ToDoObject) (*ToDoObject, error) {
 	}
 
 	// 更新されたToDoを取得
-	result, err := s.repository.Read(toDo.Id)
+	result, err := s.repository.SelectById(toDo.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -85,13 +87,13 @@ func (s *toDoService) Update(toDo *ToDoObject) (*ToDoObject, error) {
 
 func (s *toDoService) Delete(toDo *ToDoObject) (*ToDoObject, error) {
 
-	before, err := s.repository.Read(toDo.Id)
+	before, err := s.repository.SelectById(toDo.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// 対象のToDoを削除
-	err = s.repository.Delete(toDo.Id)
+	err = s.repository.DeleteById(toDo.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -101,16 +103,20 @@ func (s *toDoService) Delete(toDo *ToDoObject) (*ToDoObject, error) {
 
 func (s *toDoService) List(option *ListOption) ([]ToDoObject, error) {
 
-	selector := &model.ToDoSelector{}
+	var result []model.ToDo
 	if option.Done != "" {
-		selector.Done = option.Done
+		done, _ := strconv.ParseBool(option.Done)
+		r, err := s.repository.ListFilteredByDone(done)
+		if err != nil {
+			return nil, err
+		}
+		result = r
 	} else {
-		selector = nil
-	}
-
-	result, err := s.repository.List(selector)
-	if err != nil {
-		return nil, err
+		r, err := s.repository.ListAll()
+		if err != nil {
+			return nil, err
+		}
+		result = r
 	}
 
 	toDoList := []ToDoObject{}
