@@ -12,14 +12,14 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/ory/dockertest"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/ory/dockertest"
 	"github.com/uzimihsr/todo-rest-api-golang/domain/model"
 )
 
 // with sqlmock
-func TestCreate(t *testing.T) {
+func TestInsert(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
@@ -71,7 +71,7 @@ func TestCreate(t *testing.T) {
 			toDoRepository := NewToDoRepositoryMySQL(db)
 
 			// Act
-			_, err = toDoRepository.Create(toDoModel)
+			_, err = toDoRepository.Insert(toDoModel)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -81,7 +81,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestSelectById(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
@@ -120,7 +120,7 @@ func TestRead(t *testing.T) {
 			toDoRepository := NewToDoRepositoryMySQL(db)
 
 			// Act
-			_, err = toDoRepository.Read(id)
+			_, err = toDoRepository.SelectById(id)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -199,7 +199,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteById(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
@@ -217,7 +217,7 @@ func TestDelete(t *testing.T) {
 		{
 			name:       "02_DELETEが失敗するケース",
 			execError:  errors.New("DELETE FAILED"),
-			execResult: sqlmock.NewErrorResult(errors.New("ERROR RESULT")),
+			execResult: nil,
 			wantError:  true,
 		},
 		{
@@ -254,7 +254,7 @@ func TestDelete(t *testing.T) {
 			toDoRepository := NewToDoRepositoryMySQL(db)
 
 			// Act
-			err = toDoRepository.Delete(id)
+			err = toDoRepository.DeleteById(id)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -264,7 +264,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestListWithoutSelector(t *testing.T) {
+func TestListAll(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
@@ -311,7 +311,7 @@ func TestListWithoutSelector(t *testing.T) {
 			toDoRepository := NewToDoRepositoryMySQL(db)
 
 			// Act
-			_, err = toDoRepository.List(nil)
+			_, err = toDoRepository.ListAll()
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -321,56 +321,43 @@ func TestListWithoutSelector(t *testing.T) {
 	}
 }
 
-func TestListWithSelector(t *testing.T) {
+func TestListFilteredByDone(t *testing.T) {
 	t.Parallel() // https://github.com/golang/go/wiki/TableDrivenTests
 
 	tests := []struct {
-		name        string
-		selector    *model.ToDoSelector
-		expectedArg bool
-		queryRow    *sqlmock.Rows
-		queryError  error
-		wantError   bool
+		name       string
+		done       bool
+		queryRow   *sqlmock.Rows
+		queryError error
+		wantError  bool
 	}{
 		{
-			name:        "01_SELECTが成功するケース_done=true",
-			selector:    &model.ToDoSelector{Done: "true"},
-			expectedArg: true,
-			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
-			queryError:  nil,
-			wantError:   false,
+			name:       "01_SELECTが成功するケース_done=true",
+			done:       true,
+			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
+			queryError: nil,
+			wantError:  false,
 		},
 		{
-			name:        "02_SELECTが成功するケース_done=false",
-			selector:    &model.ToDoSelector{Done: "false"},
-			expectedArg: false,
-			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
-			queryError:  nil,
-			wantError:   false,
+			name:       "02_SELECTが成功するケース_done=false",
+			done:       false,
+			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", false, time.Now(), time.Now()),
+			queryError: nil,
+			wantError:  false,
 		},
 		{
-			name:        "03_SELECTが失敗するケース",
-			selector:    &model.ToDoSelector{Done: "true"},
-			expectedArg: true,
-			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(1, "test-ToDo", true, time.Now(), time.Now()),
-			queryError:  errors.New("SELECT FAILED"),
-			wantError:   true,
+			name:       "03_SELECTが失敗するケース",
+			done:       true,
+			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}),
+			queryError: errors.New("SELECT FAILED"),
+			wantError:  true,
 		},
 		{
-			name:        "04_SELECTが実行されないケース",
-			selector:    &model.ToDoSelector{Done: ""},
-			expectedArg: false,
-			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}),
-			queryError:  nil,
-			wantError:   true,
-		},
-		{
-			name:        "05_Scanが失敗するケース",
-			selector:    &model.ToDoSelector{Done: "true"},
-			expectedArg: true,
-			queryRow:    sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(nil, nil, nil, nil, nil),
-			queryError:  nil,
-			wantError:   true,
+			name:       "04_Scanが失敗するケース",
+			done:       true,
+			queryRow:   sqlmock.NewRows([]string{"id", "title", "done", "created_at", "updated_at"}).AddRow(nil, nil, nil, nil, nil),
+			queryError: nil,
+			wantError:  true,
 		},
 	}
 
@@ -387,13 +374,13 @@ func TestListWithSelector(t *testing.T) {
 			}
 			defer db.Close()
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT id, title, done, created_at, updated_at FROM todo WHERE done = ?")).
-				WithArgs(tt.expectedArg).
+				WithArgs(tt.done).
 				WillReturnRows(tt.queryRow).
 				WillReturnError(tt.queryError)
 			toDoRepository := NewToDoRepositoryMySQL(db)
 
 			// Act
-			_, err = toDoRepository.List(tt.selector)
+			_, err = toDoRepository.ListFilteredByDone(tt.done)
 
 			// Assert
 			if (err != nil) != tt.wantError {
@@ -403,276 +390,361 @@ func TestListWithSelector(t *testing.T) {
 	}
 }
 
+func TestInsertWithDB(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	resource, pool := createMySQLContainer("test/table_without_records.sql")
+	defer closeMySQLContainer(resource, pool)
+	db := connectMySQLContainer(resource, pool)
+	expected := &model.ToDo{
+		Title: "testToDo",
+	}
+	toDoRepository := NewToDoRepositoryMySQL(db)
+
+	// Act
+	id, err := toDoRepository.Insert(expected)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Assert
+	actual := &model.ToDo{}
+	err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", id).Scan(&actual.Id, &actual.Title, &actual.Done)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if actual.Title != expected.Title {
+		t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
+	}
+	if actual.Done != expected.Done {
+		t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
+	}
+}
+
+func TestSelectByIdWithDB(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	resource, pool := createMySQLContainer("test/table_with_records.sql")
+	defer closeMySQLContainer(resource, pool)
+	db := connectMySQLContainer(resource, pool)
+	expected := &model.ToDo{
+		Title: "ToDo01", // see test/test_read.sql
+		Done:  false,
+	}
+	toDoRepository := NewToDoRepositoryMySQL(db)
+
+	// Act
+	actual, err := toDoRepository.SelectById(1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Assert
+	if actual.Title != expected.Title {
+		t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
+	}
+	if actual.Done != expected.Done {
+		t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
+	}
+
+}
+
+func TestUpdateWithDB(t *testing.T) {
+	t.Parallel()
+	// Arrange
+	resource, pool := createMySQLContainer("test/table_with_records.sql")
+	defer closeMySQLContainer(resource, pool)
+	db := connectMySQLContainer(resource, pool)
+	expected := &model.ToDo{
+		Id:    1, // see test/test_read.sql
+		Title: "ToDo01",
+		Done:  true,
+	}
+	toDoRepository := NewToDoRepositoryMySQL(db)
+
+	// Act
+	err := toDoRepository.Update(expected)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Assert
+	actual := &model.ToDo{}
+	err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", expected.Id).Scan(&actual.Id, &actual.Title, &actual.Done)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if actual.Title != expected.Title {
+		t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
+	}
+	if actual.Done != expected.Done {
+		t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
+	}
+
+}
+
+func TestDeleteByIdWithDB(t *testing.T) {
+	t.Parallel()
+	// Arrange
+	resource, pool := createMySQLContainer("test/table_with_records.sql")
+	defer closeMySQLContainer(resource, pool)
+	db := connectMySQLContainer(resource, pool)
+	toDoRepository := NewToDoRepositoryMySQL(db)
+
+	// Act
+	err := toDoRepository.DeleteById(1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Assert
+	actual := &model.ToDo{}
+	err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", 1).Scan(&actual.Id, &actual.Title, &actual.Done)
+	if err == nil {
+		t.Error("THE RECORD STILL EXISTS")
+	}
+
+}
+
+func TestListAllWithDB(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	resource, pool := createMySQLContainer("test/table_with_records.sql")
+	defer closeMySQLContainer(resource, pool)
+	db := connectMySQLContainer(resource, pool)
+	toDoRepository := NewToDoRepositoryMySQL(db)
+	expected := []model.ToDo{ // see test/test_read.sql
+		{
+			Id:    1,
+			Title: "ToDo01",
+			Done:  false,
+		},
+		{
+			Id:    2,
+			Title: "ToDo02",
+			Done:  false,
+		},
+		{
+			Id:    3,
+			Title: "ToDo03",
+			Done:  true,
+		},
+		{
+			Id:    4,
+			Title: "ToDo04",
+			Done:  true,
+		},
+		{
+			Id:    5,
+			Title: "ToDo05",
+			Done:  false,
+		},
+	}
+
+	// Act
+	actual, err := toDoRepository.ListAll()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Assert
+	if len(actual) != len(expected) {
+		t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
+	}
+	for i := range actual {
+		err := checkRecord(&expected[i], &actual[i])
+		if err != nil {
+			t.Error(err.Error())
+		}
+	}
+}
+
 // with dockertest
-func TestWithDB(t *testing.T) {
-	t.Run(
-		"Create()でMySQLにINSERTしたレコードのチェック",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_without_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			expected := &model.ToDo{
-				Title: "testToDo",
-			}
-			toDoRepository := NewToDoRepositoryMySQL(db)
+func TestListFilteredByDoneWithDB(t *testing.T) {
+	t.Parallel()
 
-			// Act
-			id, err := toDoRepository.Create(expected)
-			if err != nil {
-				t.Error(err.Error())
-			}
+	tests := []struct {
+		name string
+		fn   func(t *testing.T)
+	}{
+		{
+			"ListFilteredById(done=true)でMySQLからSELECTしたレコードのチェック",
+			func(t *testing.T) {
+				t.Parallel()
+				// Arrange
+				resource, pool := createMySQLContainer("test/table_with_records.sql")
+				defer closeMySQLContainer(resource, pool)
+				db := connectMySQLContainer(resource, pool)
+				toDoRepository := NewToDoRepositoryMySQL(db)
+				expected := []model.ToDo{ // see test/test_read.sql
+					{
+						Id:    3,
+						Title: "ToDo03",
+						Done:  true,
+					},
+					{
+						Id:    4,
+						Title: "ToDo04",
+						Done:  true,
+					},
+				}
 
-			// Assert
-			actual := &model.ToDo{}
-			err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", id).Scan(&actual.Id, &actual.Title, &actual.Done)
-			if err != nil {
-				t.Error(err.Error())
-			}
-			if actual.Title != expected.Title {
-				t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
-			}
-			if actual.Done != expected.Done {
-				t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
-			}
-
-		},
-	)
-
-	t.Run(
-		"Read()でMySQLからSELECTしたレコードのチェック",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			expected := &model.ToDo{
-				Title: "ToDo01", // see test/test_read.sql
-				Done:  false,
-			}
-			toDoRepository := NewToDoRepositoryMySQL(db)
-
-			// Act
-			actual, err := toDoRepository.Read(1)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			if actual.Title != expected.Title {
-				t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
-			}
-			if actual.Done != expected.Done {
-				t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
-			}
-		},
-	)
-
-	t.Run(
-		"Update()でMySQLのレコードがUPDATEできることのチェック",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			expected := &model.ToDo{
-				Id:    1, // see test/test_read.sql
-				Title: "ToDo01",
-				Done:  true,
-			}
-			toDoRepository := NewToDoRepositoryMySQL(db)
-
-			// Act
-			err := toDoRepository.Update(expected)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			actual := &model.ToDo{}
-			err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", expected.Id).Scan(&actual.Id, &actual.Title, &actual.Done)
-			if err != nil {
-				t.Error(err.Error())
-			}
-			if actual.Title != expected.Title {
-				t.Errorf("expected: %s, actual: %s", expected.Title, actual.Title)
-			}
-			if actual.Done != expected.Done {
-				t.Errorf("expected: %v, actual: %v", expected.Done, actual.Done)
-			}
-
-		},
-	)
-
-	t.Run(
-		"Delete()でMySQLのレコードをDELETEできることのチェック",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			toDoRepository := NewToDoRepositoryMySQL(db)
-
-			// Act
-			err := toDoRepository.Delete(1)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			actual := &model.ToDo{}
-			err = db.QueryRow("SELECT id, title, done FROM todo WHERE id = ?", 1).Scan(&actual.Id, &actual.Title, &actual.Done)
-			if err == nil {
-				t.Error("THE RECORD STILL EXISTS")
-			}
-		},
-	)
-
-	t.Run(
-		"List()でMySQLからSELECTしたレコードのチェック_全件取得",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			toDoRepository := NewToDoRepositoryMySQL(db)
-			expected := []model.ToDo{ // see test/test_read.sql
-				{
-					Id:    1,
-					Title: "ToDo01",
-					Done:  false,
-				},
-				{
-					Id:    2,
-					Title: "ToDo02",
-					Done:  false,
-				},
-				{
-					Id:    3,
-					Title: "ToDo03",
-					Done:  true,
-				},
-				{
-					Id:    4,
-					Title: "ToDo04",
-					Done:  true,
-				},
-				{
-					Id:    5,
-					Title: "ToDo05",
-					Done:  false,
-				},
-			}
-
-			// Act
-			actual, err := toDoRepository.List(nil)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			if len(actual) != len(expected) {
-				t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
-			}
-			for i := range actual {
-				err := checkRecord(&expected[i], &actual[i])
+				// Act
+				actual, err := toDoRepository.ListFilteredByDone(true)
 				if err != nil {
 					t.Error(err.Error())
 				}
-			}
+
+				// Assert
+				if len(actual) != len(expected) {
+					t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
+				}
+				for i := range actual {
+					err := checkRecord(&expected[i], &actual[i])
+					if err != nil {
+						t.Error(err.Error())
+					}
+				}
+			},
 		},
-	)
+		{
+			"ListFilteredById(done=false)でMySQLからSELECTしたレコードのチェック",
+			func(t *testing.T) {
+				t.Parallel()
+				// Arrange
+				resource, pool := createMySQLContainer("test/table_with_records.sql")
+				defer closeMySQLContainer(resource, pool)
+				db := connectMySQLContainer(resource, pool)
+				toDoRepository := NewToDoRepositoryMySQL(db)
+				expected := []model.ToDo{ // see test/test_read.sql
+					{
+						Id:    1,
+						Title: "ToDo01",
+						Done:  false,
+					},
+					{
+						Id:    2,
+						Title: "ToDo02",
+						Done:  false,
+					},
+					{
+						Id:    5,
+						Title: "ToDo05",
+						Done:  false,
+					},
+				}
 
-	t.Run(
-		"List()でMySQLからSELECTしたレコードのチェック_Done=trueで取得",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			toDoRepository := NewToDoRepositoryMySQL(db)
-			expected := []model.ToDo{ // see test/test_read.sql
-				{
-					Id:    3,
-					Title: "ToDo03",
-					Done:  true,
-				},
-				{
-					Id:    4,
-					Title: "ToDo04",
-					Done:  true,
-				},
-			}
-			selector := &model.ToDoSelector{
-				Done: "true",
-			}
-
-			// Act
-			actual, err := toDoRepository.List(selector)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			if len(actual) != len(expected) {
-				t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
-			}
-			for i := range actual {
-				err := checkRecord(&expected[i], &actual[i])
+				// Act
+				actual, err := toDoRepository.ListFilteredByDone(false)
 				if err != nil {
 					t.Error(err.Error())
 				}
-			}
-		},
-	)
 
-	t.Run(
-		"List()でMySQLからSELECTしたレコードのチェック_Done=falseで取得",
-		func(t *testing.T) {
-			// Arrange
-			resource, pool := createMySQLContainer("test/table_with_records.sql")
-			defer closeMySQLContainer(resource, pool)
-			db := connectMySQLContainer(resource, pool)
-			toDoRepository := NewToDoRepositoryMySQL(db)
-			expected := []model.ToDo{ // see test/test_read.sql
-				{
-					Id:    1,
-					Title: "ToDo01",
-					Done:  false,
-				},
-				{
-					Id:    2,
-					Title: "ToDo02",
-					Done:  false,
-				},
-				{
-					Id:    5,
-					Title: "ToDo05",
-					Done:  false,
-				},
-			}
-			selector := &model.ToDoSelector{
-				Done: "false",
-			}
-
-			// Act
-			actual, err := toDoRepository.List(selector)
-			if err != nil {
-				t.Error(err.Error())
-			}
-
-			// Assert
-			if len(actual) != len(expected) {
-				t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
-			}
-			for i := range actual {
-				err := checkRecord(&expected[i], &actual[i])
-				if err != nil {
-					t.Error(err.Error())
+				// Assert
+				if len(actual) != len(expected) {
+					t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
 				}
-			}
+				for i := range actual {
+					err := checkRecord(&expected[i], &actual[i])
+					if err != nil {
+						t.Error(err.Error())
+					}
+				}
+			},
 		},
-	)
+	}
+	for _, tt := range tests {
+		tt := tt // NOTE: https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
+		t.Run(tt.name, tt.fn)
+	}
+
+	// t.Run(
+	// 	"ListFilteredById(done=true)でMySQLからSELECTしたレコードのチェック",
+	// 	func(t *testing.T) {
+	// 		// Arrange
+	// 		resource, pool := createMySQLContainer("test/table_with_records.sql")
+	// 		defer closeMySQLContainer(resource, pool)
+	// 		db := connectMySQLContainer(resource, pool)
+	// 		toDoRepository := NewToDoRepositoryMySQL(db)
+	// 		expected := []model.ToDo{ // see test/test_read.sql
+	// 			{
+	// 				Id:    3,
+	// 				Title: "ToDo03",
+	// 				Done:  true,
+	// 			},
+	// 			{
+	// 				Id:    4,
+	// 				Title: "ToDo04",
+	// 				Done:  true,
+	// 			},
+	// 		}
+
+	// 		// Act
+	// 		actual, err := toDoRepository.ListFilteredByDone(true)
+	// 		if err != nil {
+	// 			t.Error(err.Error())
+	// 		}
+
+	// 		// Assert
+	// 		if len(actual) != len(expected) {
+	// 			t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
+	// 		}
+	// 		for i := range actual {
+	// 			err := checkRecord(&expected[i], &actual[i])
+	// 			if err != nil {
+	// 				t.Error(err.Error())
+	// 			}
+	// 		}
+	// 	},
+	// )
+
+	// t.Run(
+	// 	"ListFilteredById(done=false)でMySQLからSELECTしたレコードのチェック",
+	// 	func(t *testing.T) {
+	// 		// Arrange
+	// 		resource, pool := createMySQLContainer("test/table_with_records.sql")
+	// 		defer closeMySQLContainer(resource, pool)
+	// 		db := connectMySQLContainer(resource, pool)
+	// 		toDoRepository := NewToDoRepositoryMySQL(db)
+	// 		expected := []model.ToDo{ // see test/test_read.sql
+	// 			{
+	// 				Id:    1,
+	// 				Title: "ToDo01",
+	// 				Done:  false,
+	// 			},
+	// 			{
+	// 				Id:    2,
+	// 				Title: "ToDo02",
+	// 				Done:  false,
+	// 			},
+	// 			{
+	// 				Id:    5,
+	// 				Title: "ToDo05",
+	// 				Done:  false,
+	// 			},
+	// 		}
+
+	// 		// Act
+	// 		actual, err := toDoRepository.ListFilteredByDone(false)
+	// 		if err != nil {
+	// 			t.Error(err.Error())
+	// 		}
+
+	// 		// Assert
+	// 		if len(actual) != len(expected) {
+	// 			t.Errorf("list lengths do not match. expected: %v, actual: %v", len(expected), len(actual))
+	// 		}
+	// 		for i := range actual {
+	// 			err := checkRecord(&expected[i], &actual[i])
+	// 			if err != nil {
+	// 				t.Error(err.Error())
+	// 			}
+	// 		}
+	// 	},
+	// )
 
 }
 
